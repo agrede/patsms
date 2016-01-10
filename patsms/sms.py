@@ -1,6 +1,6 @@
 from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack
-from numpy import sin, sqrt
-from numpy.linalg import norm, inner
+from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, fliplr, inner
+from numpy.linalg import norm
 from scipy.optimize import fsolve
 
 
@@ -17,7 +17,7 @@ def wa(wr, wx, hx, ni, no, thetai):
                   wr*ni/no*sin(thetai))[0]
 
 
-def rx(ri, di, rf, n, l):
+def solve_rx(ri, di, rf, n, l):
     """Returns position and normal of a mirror
     ri -- initial ray position
     di -- initial ray direction
@@ -27,12 +27,12 @@ def rx(ri, di, rf, n, l):
     """
     mi = fsolve(lambda x: l-n*(x+norm(rf-(ri+x*di))),
                 (l/n-norm(rf-ri)))[0]
-    trx = ri+mi*di
-    nx = dnx(di, uv(rf-trx))
-    return (trx, nx)
+    rx = ri+mi*di
+    nx = dnx(di, uv(rf-rx))
+    return (rx, nx)
 
 
-def rr(rf, df, ri, di, ns, l):
+def solve_rr(rf, df, ri, di, ns, l):
     """Returns position and normal of refractive surface
     rf -- final ray position
     df -- final ray direction
@@ -41,8 +41,42 @@ def rr(rf, df, ri, di, ns, l):
     ns -- indices of refraction
     l -- optical path length
     """
-    mf = fsolve(lambda x: l-inner((rf-x*df)-ri, [1., -1.]*di) -
+    mf = fsolve(lambda x: l+inner((rf-x*df)-ri, [1., -1.]*di) -
                 ns[1]*x, l/ns[1])[0]
-    trr = rf-mf*df
+    rr = rf-mf*df
     nr = dnr(di, df, ns)
-    return (trr, nr)
+    return (rr, nr)
+
+
+def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
+                      ni=1., thetai=9.35e-3, Nmax=200):
+    """Returns design rr, rx, dnr, dnx"""
+    ns = hstack((nr, nstack, nx))
+    rr = [array([wr/2., ystack[-1]])]
+    rx = [array([wr/2., 0.])]
+    di = array([[sin(thetai), -cos(thetai)],
+                [-sin(thetai), -cos(thetai)]])
+    tmp = wa(wr, wr, 0., ni, pi/2., thetai)
+    ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
+    nr = [dnr(di[1, :], array([0., -1.]), array(ni, nr))]
+    nx = [dnx(array([0., -1.]), array([-1., 0.]))]
+    l = [opl(vstack((rr[0],
+                     vstack((wr*ones(ystack.size)), ystack).T,
+                     rx[0], ra[1, :])), hstack(([nr], nstack, [nx])))]
+    k = 0
+    while k < Nmax and rr[-1][0] >= 0. and rx[-1][0] >= 0.:
+        ds = dsr(di[1, :], nr[-1], ns[:2])
+        rs, ds, dl = trace_stack(ystack, ns[:-1], rr[0], ds)
+        trx, tnx = solve_rx(rs, ds, ra[0, :], ns[-1],
+                            l[-1]+ni*2.*rr[-1][0]*sin(thetai)-dl)
+        rx.append(trx)
+        nx.append(tnx)
+        ds = dsx(uv(rx[-1]-ra[1, :]), nx[-1])
+        rs, ds, dl = trace_stack(fliplr(ystack), fliplr(ns[1:]),
+                                 rx[-1], ds)
+        dl = dl + opl(vstack((ra[1, :], rx[-1])), ns[-1:])
+        trr, tnr = solve_rr(rs, ds*[1., -1.], di[0, :], ns[:2], l[0]-dl)
+        rr.append(trr)
+        nr.append(tnr)
+        l.append(dl+opl(vstack((rs, rr[-1])), ns[1:1]))
+    return (vstack(rr), vstack(rx), vstack(nr), vstack(nx))
