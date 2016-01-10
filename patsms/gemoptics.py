@@ -1,4 +1,4 @@
-from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign
+from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros
 from numpy.linalg import norm, inner, dot
 
 
@@ -54,15 +54,15 @@ def opl(p, n):
 
 
 def trace_stack(ys, ns, r, ar):
-    """ Trace stack of layers and return final position and direction
+    """ Trace stack of layers and return final position, direction, and opl
     ys -- array of N y values for the stack
     ns -- array of N+1 refractive indices
     r -- starting position
     ar -- starting direction unit vector
     """
     dn = array([0, sign(ar[1])])
+    rs = vstack((r, vstack((zeros(ys.size), ys)).T))
     for k, y in enumerate(ys):
-        x = (y-r[1])*ar[0]/ar[1]+r[0]
-        r = array([x, y])
+        rs[k, 0] = (y-r[1])*ar[0]/ar[1]+r[0]
         ar = dsr(ar, dn, ns[[k, k+1]])
-    return (r, ar)
+    return (rs[-1, :], ar, opl(rs, ns[:-1]))
