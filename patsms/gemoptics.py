@@ -45,6 +45,14 @@ def dnr(di, ds, n):
     return uv(dot(n, vstack(di, ds))[0, :])
 
 
+def dnx(di, ds):
+    """Surface normal of reflective surface
+    di -- incident ray unit vector
+    ds -- refracted ray unit vector
+    """
+    return uv(ds-di)
+
+
 def opl(p, n):
     """Returns the optical path length
     p -- array of N rows of points [x, y]
