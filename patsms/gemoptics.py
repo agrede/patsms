@@ -61,16 +61,16 @@ def opl(p, n):
     return inner(norm(diff(p, axis=0), axis=1), n)
 
 
-def trace_stack(ys, ns, r, ar):
+def trace_stack(ys, ns, r, dr):
     """ Trace stack of layers and return final position, direction, and opl
     ys -- array of N y values for the stack
     ns -- array of N+1 refractive indices
     r -- starting position
-    ar -- starting direction unit vector
+    dr -- starting direction unit vector
     """
-    dn = array([0, sign(ar[1])])
+    dn = array([0, sign(dr[1])])
     rs = vstack((r, vstack((zeros(ys.size), ys)).T))
     for k, y in enumerate(ys):
-        rs[k, 0] = (y-r[1])*ar[0]/ar[1]+r[0]
-        ar = dsr(ar, dn, ns[[k, k+1]])
-    return (rs[-1, :], ar, opl(rs, ns[:-1]))
+        rs[k, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
+        dr = dsr(ar, dn, ns[[k, k+1]])
+    return (rs[-1, :], dr, opl(rs, ns[:-1]))
