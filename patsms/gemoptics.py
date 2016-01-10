@@ -72,5 +72,5 @@ def trace_stack(ys, ns, r, dr):
     rs = vstack((r, vstack((zeros(ys.size), ys)).T))
     for k, y in enumerate(ys):
         rs[k, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
-        dr = dsr(ar, dn, ns[[k, k+1]])
+        dr = dsr(dr, dn, ns[[k, k+1]])
     return (rs[-1, :], dr, opl(rs, ns[:-1]))
