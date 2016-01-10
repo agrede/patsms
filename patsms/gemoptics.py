@@ -1,5 +1,5 @@
-from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros
-from numpy.linalg import norm, inner, dot
+from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot
+from numpy.linalg import norm
 
 
 def uv(x):
