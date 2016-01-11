@@ -74,3 +74,8 @@ def trace_stack(ys, ns, r, dr):
         rs[k+1, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
         dr = dsr(dr, dn, ns[[k, k+1]])
     return (rs[-1, :], dr, opl(rs, array(ns[:-1])))
+
+
+def d_to_n(dydx):
+    """Return normal vector from surface derivative"""
+    return uv([-dydx, 1.])
