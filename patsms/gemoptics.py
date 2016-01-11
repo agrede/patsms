@@ -61,7 +61,7 @@ def opl(p, n):
     return inner(norm(diff(p, axis=0), axis=1), n)
 
 
-def trace_stack(ys, ns, r, dr):
+def trace_stack(ys, ns, r, dr, return_all=False):
     """ Trace stack of layers and return final position, direction, and opl
     ys -- array of N y values for the stack
     ns -- array of N+1 refractive indices
@@ -73,7 +73,10 @@ def trace_stack(ys, ns, r, dr):
     for k, y in enumerate(ys):
         rs[k+1, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
         dr = dsr(dr, dn, ns[[k, k+1]])
-    return (rs[-1, :], dr, opl(rs, array(ns[:-1])))
+    if return_all:
+        return (rs, dr, opl(rs, array(ns[:-1])))
+    else:
+        return (rs[-1, :], dr, opl(rs, array(ns[:-1])))
 
 
 def d_to_n(dydx):
