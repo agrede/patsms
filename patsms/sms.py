@@ -1,7 +1,8 @@
 from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack
-from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, fliplr, inner
+from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, fliplr, inner, where, argsort
 from numpy.linalg import norm
 from scipy.optimize import fsolve
+from scipy.interpolate import PiecewisePolynomial
 
 
 def wa(wr, wx, hx, ni, no, thetai):
@@ -82,3 +83,24 @@ def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
         l.append(dl+opl(vstack((rs, rr[-1])), array(ns[1:2])))
 
     return (vstack(rr), vstack(rx), vstack(nr), vstack(nx), hstack(l))
+
+
+def fit_surf(r, n, sym=True):
+    """Returns PiecewisePolynomial fit for surface
+    r -- coordinates of surface
+    n -- surface normal for each coordinate
+    sym -- treat as symmetrical
+    """
+    if sym:
+        kp = where(r[:, 0] >= 0)[0]
+        x = hstack((-r[kp, 0], r[kp, 0]))
+        ks = argsort(x)
+        x = x[ks]
+        y = vstack((
+            hstack((r[kp, 1], r[kp, 1]))[ks],
+            hstack((n[kp, 0]/n[kp, 1], -n[kp, 0]/n[kp, 1]))[ks])).T
+    else:
+        ks = argsort(r[:, 0])
+        x = r[ks, 0]
+        y = vstack((r[ks, 1], -n[ks, 0]/n[ks, 1])).T
+    return PiecewisePolynomial(x, y)
