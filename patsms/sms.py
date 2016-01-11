@@ -51,32 +51,34 @@ def solve_rr(rf, df, ri, di, ns, l):
 def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
                       ni=1., thetai=9.35e-3, Nmax=200, hx=0.):
     """Returns design rr, rx, dnr, dnx"""
+    ystack = hstack((ystack, [0.]))
     ns = hstack((ni, nr, nstack, nx))
-    rr = [array([wr/2., ystack[-1]])]
+    rr = [array([wr/2., ystack[0]])]
     rx = [array([wr/2., -hx])]
     di = array([[sin(thetai), -cos(thetai)],
                 [-sin(thetai), -cos(thetai)]])
-    tmp = wa(wr, wr, hx, ni, pi/2., thetai)
+    tmp = wa(wr, wr, hx, ns[0], ns[-1], thetai)
     ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
-    nr = [dnr(di[1, :], array([0., -1.]), array(ni, nr))]
-    nx = [dnx(array([0., -1.]), array([-1., 0.]))]
+    nr = [dnr(di[0, :], array([0., -1.]), ns[:2])]
+    nx = [dnx(uv(rx[-1]-rr[-1]), uv(ra[1, :]-rx[-1]))]
     l = [opl(vstack((rr[0],
-                     vstack((wr*ones(ystack.size)), ystack).T,
-                     rx[0], ra[1, :])), hstack(([nr], nstack, [nx])))]
+                     vstack(((wr/2.*ones(ystack.size)), ystack)).T,
+                     rx[0], ra[1, :])), hstack((ns[1:], ns[[-1]])))]
     k = 0
     while k < Nmax and rr[-1][0] >= 0. and rx[-1][0] >= 0.:
         ds = dsr(di[1, :], nr[-1], ns[:2])
-        rs, ds, dl = trace_stack(ystack, ns[:-1], rr[0], ds)
+        rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
         trx, tnx = solve_rx(rs, ds, ra[0, :], ns[-1],
-                            l[-1]+ni*2.*rr[-1][0]*sin(thetai)-dl)
+                            l[-1]+ns[0]*2.*rr[-1][0]*sin(thetai)-dl)
         rx.append(trx)
         nx.append(tnx)
         ds = dsx(uv(rx[-1]-ra[1, :]), nx[-1])
-        rs, ds, dl = trace_stack(fliplr(ystack), fliplr(ns[1:]),
+        rs, ds, dl = trace_stack(ystack[::-1], ns[:0:-1],
                                  rx[-1], ds)
-        dl = dl + opl(vstack((ra[1, :], rx[-1])), ns[-1:])
-        trr, tnr = solve_rr(rs, ds*[1., -1.], di[0, :], ns[:2], l[0]-dl)
+        dl = dl + opl(vstack((ra[1, :], rx[-1])), array(ns[-1:]))
+        trr, tnr = solve_rr(rs, -ds, rr[-1], di[0, :], ns[:2], l[-1]-dl)
         rr.append(trr)
         nr.append(tnr)
-        l.append(dl+opl(vstack((rs, rr[-1])), ns[1:1]))
-    return (vstack(rr), vstack(rx), vstack(nr), vstack(nx))
+        l.append(dl+opl(vstack((rs, rr[-1])), array(ns[1:2])))
+
+    return (vstack(rr), vstack(rx), vstack(nr), vstack(nx), hstack(l))

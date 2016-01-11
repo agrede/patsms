@@ -42,7 +42,7 @@ def dnr(di, ds, n):
     n -- array of refractive indices
     """
     n = atleast_2d(n)*[1., -1.]
-    return uv(dot(n, vstack(di, ds))[0, :])
+    return uv(dot(n, vstack((di, ds)))[0, :])
 
 
 def dnx(di, ds):
@@ -68,9 +68,9 @@ def trace_stack(ys, ns, r, dr):
     r -- starting position
     dr -- starting direction unit vector
     """
-    dn = array([0, sign(dr[1])])
+    dn = array([0, -sign(dr[1])])
     rs = vstack((r, vstack((zeros(ys.size), ys)).T))
     for k, y in enumerate(ys):
-        rs[k, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
+        rs[k+1, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
         dr = dsr(dr, dn, ns[[k, k+1]])
-    return (rs[-1, :], dr, opl(rs, ns[:-1]))
+    return (rs[-1, :], dr, opl(rs, array(ns[:-1])))
