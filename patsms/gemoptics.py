@@ -1,5 +1,6 @@
-from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot
+from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos
 from numpy.linalg import norm
+from scipy.optimize import fsolve
 
 
 def uv(x):
@@ -82,3 +83,13 @@ def trace_stack(ys, ns, r, dr, return_all=False):
 def d_to_n(dydx):
     """Return normal vector from surface derivative"""
     return uv([-dydx, 1.])
+
+
+def find_angle(ys, ns, dx):
+    """Find angle for stack that changes ray by dx"""
+    r0 = array([0., 0.])
+    th = fsolve(lambda x: dx -
+                trace_stack(ys, ns, r0,
+                            array([sin(x[0]), -cos(x[0])]))[0][0],
+                arctan(dx/(ys[0]-ys[-1])))[0]
+    return array([sin(th), -cos(th)])
