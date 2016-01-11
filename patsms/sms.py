@@ -49,14 +49,14 @@ def solve_rr(rf, df, ri, di, ns, l):
 
 
 def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
-                      ni=1., thetai=9.35e-3, Nmax=200):
+                      ni=1., thetai=9.35e-3, Nmax=200, hx=0.):
     """Returns design rr, rx, dnr, dnx"""
-    ns = hstack((nr, nstack, nx))
+    ns = hstack((ni, nr, nstack, nx))
     rr = [array([wr/2., ystack[-1]])]
-    rx = [array([wr/2., 0.])]
+    rx = [array([wr/2., -hx])]
     di = array([[sin(thetai), -cos(thetai)],
                 [-sin(thetai), -cos(thetai)]])
-    tmp = wa(wr, wr, 0., ni, pi/2., thetai)
+    tmp = wa(wr, wr, hx, ni, pi/2., thetai)
     ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
     nr = [dnr(di[1, :], array([0., -1.]), array(ni, nr))]
     nx = [dnx(array([0., -1.]), array([-1., 0.]))]
