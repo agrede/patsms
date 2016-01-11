@@ -1,8 +1,8 @@
-from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack
-from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, fliplr, inner, where, argsort
+from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n
+from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack
 from numpy.linalg import norm
 from scipy.optimize import fsolve
-from scipy.interpolate import PiecewisePolynomial
+from scipy.interpolate import PiecewisePolynomial, PchipInterpolator
 
 
 def wa(wr, wx, hx, ni, no, thetai):
@@ -61,12 +61,14 @@ def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
     tmp = wa(wr, wr, hx, ns[0], ns[-1], thetai)
     ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
     nr = [dnr(di[0, :], array([0., -1.]), ns[:2])]
-    nx = [dnx(uv(rx[-1]-rr[-1]), uv(ra[1, :]-rx[-1]))]
+    nx = [dnx(uv(rx[-1]-rr
+                 [-1]), uv(ra[1, :]-rx[-1]))]
     l = [opl(vstack((rr[0],
                      vstack(((wr/2.*ones(ystack.size)), ystack)).T,
                      rx[0], ra[1, :])), hstack((ns[1:], ns[[-1]])))]
     k = 0
     while k < Nmax and rr[-1][0] >= 0. and rx[-1][0] >= 0.:
+        k = k+1
         ds = dsr(di[1, :], nr[-1], ns[:2])
         rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
         trx, tnx = solve_rx(rs, ds, ra[0, :], ns[-1],
@@ -104,3 +106,50 @@ def fit_surf(r, n, sym=True):
         x = r[ks, 0]
         y = vstack((r[ks, 1], -n[ks, 0]/n[ks, 1])).T
     return PiecewisePolynomial(x, y)
+
+
+def fit_surf_spline(r, n, sym=True):
+    """Returns PchipInterpolator fit for surface
+    r -- coordinates of surface
+    n -- surface normal for each coordinate
+    sym -- treat as symmetrical
+    """
+    if sym:
+        kp = where(r[:, 0] >= 0)[0]
+        x = hstack((-r[kp, 0], r[kp, 0]))
+        ks = argsort(x)
+        x = x[ks]
+        y = hstack((r[kp, 1], r[kp, 1]))[ks]
+    else:
+        ks = argsort(r[:, 0])
+        x = r[ks, 0]
+        y = r[ks, 1]
+    return PchipInterpolator(x, y)
+
+
+def trace_rx(fr, fx, ystack, nstack, nr, nx, xs, thetai,
+             wr=1., hx=0., ni=1., dfr=None, dfx=None):
+    ystack = hstack((ystack, [0.]))
+    di = array([sin(thetai), -cos(thetai)])
+    ns = hstack((ni, nr, nstack, nx))
+    rtn = zeros((3+ystack.size, 2, xs.size))
+    if dfr is None:
+        dfr = lambda x: fr.derivative(x)
+    if dfx is None:
+        dfx = lambda x: fx.derivative(x)
+    for k, x in enumerate(xs):
+        rr = array([x, fr(x)])
+        ds = dsr(di, d_to_n(dfr(x)), ns[:2])
+        tmp, ds, dl = trace_stack(ystack, ns[1:], rr, ds, return_all=True)
+        if ds[0] == 0. or ds[1] >= 0.:
+            next
+        tx = (-hx-tmp[-1, 1])*ds[0]/ds[1]+tmp[-1, 0]
+        if tx < -wr/2. or tx > wr/2.:
+            next
+        xx = fsolve(lambda x: ds[1]/ds[0]*(x-tmp[-1, 0]) +
+                    tmp[-1, 1]-fx(x), tx)[0]
+        rx = array([xx, fx(xx)])
+        ds = dsx(ds, d_to_n(dfx(xx)))
+        ra = -rx[1]/ds[1]*ds+rx
+        rtn[:, :, k] = vstack((tmp, rx, ra))
+    return rtn
