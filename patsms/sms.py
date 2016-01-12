@@ -1,4 +1,4 @@
-from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n
+from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, find_angle
 from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack
 from numpy.linalg import norm
 from scipy.optimize import fsolve
@@ -49,18 +49,40 @@ def solve_rr(rf, df, ri, di, ns, l):
     return (rr, nr)
 
 
-def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
-                      ni=1., thetai=9.35e-3, Nmax=200, hx=0.):
+def solve_rr_rev(rf, df, ri, di, ns, l, thetai):
+    """Returns position and normal of refractive surface
+    rf -- final ray position
+    df -- final ray direction
+    ri -- reference position for opl
+    di -- initial ray direction
+    ns -- indices of refraction
+    l -- optical path length
+    """
+    mf = fsolve(lambda x: l +
+                ns[0]*inner((rf-x*df)-ri,
+                            array([sin(thetai), cos(thetai)])) -
+                ns[1]*x, l/ns[1])[0]
+    rr = rf-mf*df
+    nr = dnr(di, df, ns)
+    return (rr, nr)
+
+
+def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1., wx=1.,
+                      ni=1., thetai=4.66e-3, Nmax=200, hx=0.):
     """Returns design rr, rx, dnr, dnx"""
     ystack = hstack((ystack, [0.]))
     ns = hstack((ni, nr, nstack, nx))
     rr = [array([wr/2., ystack[0]])]
-    rx = [array([wr/2., -hx])]
+    rx = [array([wx/2., -hx])]
     di = array([[sin(thetai), -cos(thetai)],
                 [-sin(thetai), -cos(thetai)]])
-    tmp = wa(wr, wr, hx, ns[0], ns[-1], thetai)
+    tmp = wa(wr, wx, hx, ns[0], ns[-1], thetai)
     ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
-    nr = [dnr(di[0, :], array([0., -1.]), ns[:2])]
+    nr = [dnr(di[0, :],
+              find_angle(hstack((ystack, [-hx])),
+                         hstack((ns[1:], ns[[-1]])),
+                         (wx-wr)/2.),
+              ns[:2])]
     nx = [dnx(uv(rx[-1]-rr
                  [-1]), uv(ra[1, :]-rx[-1]))]
     l = [opl(vstack((rr[0],
@@ -84,6 +106,44 @@ def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1.,
         nr.append(tnr)
         l.append(dl+opl(vstack((rs, rr[-1])), array(ns[1:2])))
 
+    return (vstack(rr), vstack(rx), vstack(nr), vstack(nx), hstack(l))
+
+
+def sms_rx_inf_source_rev(nr, nx, ystack, nstack, hr, hx, thetao,
+                          wr=1., ni=1., thetai=4.66e-3, Nmax=200):
+    """Returns design rr, rx, dnr, dnx"""
+    ns = hstack((ni, nr, nstack, nx))
+    ystack = hstack((ystack, [0.]))
+    di = array([[sin(thetai), -cos(thetai)],
+                [-sin(thetai), -cos(thetai)]])
+    tmp = wr/(ns[1]*sin(thetao)/(ns[0]*sin(thetai)))
+    ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
+    rr = [array([0., hr])]
+    nr = [array([0., 1.])]
+    ds = dsr(di[0, :], nr[-1], ns[:2])
+    rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
+    rx = [rs+ds*(-hx/ds[1])]
+    nx = [dnx(ds, uv(ra[1, :]-rx[-1]))]
+    l = [dl+opl(vstack((rs, rx[-1], ra[1, :])), array([ns[-1], ns[-1]]))]
+    k = 0
+    while k < Nmax and rr[-1][0] <= wr:
+        k = k+1
+        ds = dsx(uv(rx[-1]-ra[0, :]), nx[-1])
+        rs, ds, dl = trace_stack(ystack[::-1], ns[:0:-1],
+                                 rx[-1], ds)
+        dl = dl + opl(vstack((ra[0, :], rx[-1])), array(ns[-1:]))
+        trr, tnr = solve_rr_rev(rs, -ds, rr[0], di[1, :],
+                                ns[:2], l[0]-dl, thetai)
+        rr.append(trr)
+        nr.append(tnr)
+        l.append(dl+opl(vstack((rs, rr[-1])), array(ns[1:2])))
+        ds = dsr(di[0, :], nr[-1], ns[:2])
+        rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
+        dl = dl-ns[0]*inner(rr[-1]-rr[0],
+                            array([-sin(thetai), cos(thetai)]))
+        trx, tnx = solve_rx(rs, ds, ra[1, :], ns[-1], l[0]-dl)
+        rx.append(trx)
+        nx.append(tnx)
     return (vstack(rr), vstack(rx), vstack(nr), vstack(nx), hstack(l))
 
 
