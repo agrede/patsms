@@ -126,6 +126,49 @@ def sms_rx_inf_source_rev(nr, nx, ystack, nstack, hr, hx, thetao,
     nx = [dnx(ds, uv(ra[1, :]-rx[-1]))]
     l = [dl+opl(vstack((rs, rx[-1], ra[1, :])), array([ns[-1], ns[-1]]))]
     k = 0
+    while k < Nmax and rr[-1][0] <= wr/2.:
+        k = k+1
+        ds = dsx(uv(rx[-1]-ra[0, :]), nx[-1])
+        rs, ds, dl = trace_stack(ystack[::-1], ns[:0:-1],
+                                 rx[-1], ds)
+        dl = dl + opl(vstack((ra[0, :], rx[-1])), array(ns[-1:]))
+        trr, tnr = solve_rr_rev(rs, -ds, rr[0], di[1, :],
+                                ns[:2], l[0]-dl, thetai)
+        rr.append(trr)
+        nr.append(tnr)
+        l.append(dl+opl(vstack((rs, rr[-1])), array(ns[1:2])))
+        ds = dsr(di[0, :], nr[-1], ns[:2])
+        rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
+        dl = dl-ns[0]*inner(rr[-1]-rr[0],
+                            array([-sin(thetai), cos(thetai)]))
+        trx, tnx = solve_rx(rs, ds, ra[1, :], ns[-1], l[0]-dl)
+        rx.append(trx)
+        nx.append(tnx)
+    return (vstack(rr), vstack(rx), vstack(nr), vstack(nx), hstack(l))
+
+
+def sms_rx_inf_source_ang(nr, nx, ystack, nstack, hr, fr, fx,
+                          thetas, thetao, dfr=None, dfx=None,
+                          wr=1., ni=1., thetai=4.66e-3, Nmax=200):
+    """Returns design rr, rx, dnr, dnx"""
+    ns = hstack((ni, nr, nstack, nx))
+    ystack = hstack((ystack, [0.]))
+    di = array([[sin(thetas+thetai), -cos(thetas+thetai)],
+                [sin(thetas-thetai), -cos(thetas-thetai)]])
+    tmpa = trace_rx(fr, fx, ystack, nstack, nr, nx, array([0.]),
+                    thetas+thetai, wr=wr, dfr=dfr, dfx=dfx)
+    tmpb = trace_rx(fr, fx, ystack, nstack, nr, nx, array([0.]),
+                    thetas-thetai, wr=wr, dfr=dfr, dfx=dfx)
+    ra = vstack((tmpa[-1, :, 0], tmpb[-1, :, 0]))
+    l0 = [opl(tmpa, array(ns[1:])), opl(tmpb, array(ns[1:]))]
+    rr = [array([0., hr])]
+    nr = [array([0., 1.])]
+    ds = dsr(di[0, :], nr[-1], ns[:2])
+    rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
+    rx = []
+    nx = [dnx(ds, uv(ra[1, :]-rx[-1]))]
+    l = [dl+opl(vstack((rs, rx[-1], ra[1, :])), array([ns[-1], ns[-1]]))]
+    k = 0
     while k < Nmax and rr[-1][0] <= wr:
         k = k+1
         ds = dsx(uv(rx[-1]-ra[0, :]), nx[-1])
