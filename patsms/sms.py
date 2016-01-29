@@ -1,5 +1,5 @@
 from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, find_angle
-from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack
+from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack, arctan
 from numpy.linalg import norm
 from scipy.optimize import fsolve
 from scipy.interpolate import PiecewisePolynomial, PchipInterpolator
@@ -77,6 +77,8 @@ def sms_rx_inf_source(nr, nx, ystack, nstack, wr=1., wx=1.,
     di = array([[sin(thetai), -cos(thetai)],
                 [-sin(thetai), -cos(thetai)]])
     tmp = wa(wr, wx, hx, ns[0], ns[-1], thetai)
+    # thetao = arctan((2.*hx)/wr)
+    # tmp = wr*ni*sin(thetai)/(nx*sin(thetao))
     ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
     nr = [dnr(di[0, :],
               find_angle(hstack((ystack, [-hx])),
@@ -145,6 +147,48 @@ def sms_rx_inf_source_rev(nr, nx, ystack, nstack, hr, hx, thetao,
         rx.append(trx)
         nx.append(tnx)
     return (vstack(rr), vstack(rx), vstack(nr), vstack(nx), hstack(l))
+
+
+def sms_rx_inf_source_cont(nr, nx, ystack, nstack, rr_0, rr_next,
+                           nr_next, l_0, thetao, wr=1., ni=1.,
+                           thetai=4.66e-3, Nmax=200):
+    ns = hstack((ni, nr, nstack, nx))
+    ystack = hstack((ystack, [0.]))
+    di = array([[sin(thetai), -cos(thetai)],
+                [-sin(thetai), -cos(thetai)]])
+    tmp = wr/(ns[1]*sin(thetao)/(ns[0]*sin(thetai)))
+    ra = array([[-tmp/2., 0.], [tmp/2., 0.]])
+    rr = [rr_0, rr_next]
+    nr = [array([0., 1.]), nr_next]
+    l = [l_0]
+    ds = dsr(di[0, :], nr[-1], ns[:2])
+    rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
+    dl = dl-ns[0]*inner(rr[-1]-rr[0],
+                        array([-sin(thetai), cos(thetai)]))
+    trx, tnx = solve_rx(rs, ds, ra[1, :], ns[-1], l[0]-dl)
+    rx = [trx]
+    nx = [tnx]
+    k = 0
+    while k < Nmax and rr[-1][0] <= wr/2.:
+        k = k+1
+        ds = dsx(uv(rx[-1]-ra[0, :]), nx[-1])
+        rs, ds, dl = trace_stack(ystack[::-1], ns[:0:-1],
+                                 rx[-1], ds)
+        dl = dl + opl(vstack((ra[0, :], rx[-1])), array(ns[-1:]))
+        trr, tnr = solve_rr_rev(rs, -ds, rr[0], di[1, :],
+                                ns[:2], l[0]-dl, thetai)
+        rr.append(trr)
+        nr.append(tnr)
+        l.append(dl+opl(vstack((rs, rr[-1])), array(ns[1:2])))
+        ds = dsr(di[0, :], nr[-1], ns[:2])
+        rs, ds, dl = trace_stack(ystack, ns[1:], rr[-1], ds)
+        dl = dl-ns[0]*inner(rr[-1]-rr[0],
+                            array([-sin(thetai), cos(thetai)]))
+        trx, tnx = solve_rx(rs, ds, ra[1, :], ns[-1], l[0]-dl)
+        rx.append(trx)
+        nx.append(tnx)
+    return (vstack(rr)[1:, :], vstack(rx),
+            vstack(nr)[1:, :], vstack(nx), hstack(l))
 
 
 def sms_rx_inf_source_ang(nr, nx, ystack, nstack, hr, fr, fx,
