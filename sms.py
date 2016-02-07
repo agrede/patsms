@@ -1,4 +1,4 @@
-from gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, find_angle
+from patsms.gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, find_angle
 from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack, arctan
 from numpy.linalg import norm
 from scipy.optimize import fsolve
