@@ -1,4 +1,4 @@
-from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos
+from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos, arange
 from numpy.linalg import norm
 from scipy.optimize import fsolve
 
@@ -93,3 +93,25 @@ def find_angle(ys, ns, dx):
                             array([sin(x[0]), -cos(x[0])]))[0][0],
                 arctan(dx/(ys[0]-ys[-1])))[0]
     return array([sin(th), -cos(th)])
+
+
+def asphere(r, R, kappa, alpha):
+    kappa = kappa+1.
+    alpha = atleast_2d(alpha)
+    r = atleast_2d(r).T
+    powers = atleast_2d(2*(1+arange(alpha.size)))
+    a = sqrt(1.-kappa*power(r/R, 2))
+    return (power(r[:, 0], 2)/((a[:, 0]+1.)*R) +
+            sum(alpha*power(r, powers), axis=1))
+
+
+def dasphere(r, R, kappa, alpha):
+    kappa = kappa+1.
+    alpha = atleast_2d(alpha)
+    r = atleast_2d(r).T
+    powers = atleast_2d(2*(1+arange(alpha.size)))
+    a = sqrt(1.-kappa*power(r[:, 0]/R, 2))
+    return (
+        2.*r[:, 0]/((a+1.)*R) +
+        kappa*power(r[:, 0]/R, 3)/(power(a+1., 2)*a) +
+        sum(powers*alpha*power(r, powers-1), axis=1))
