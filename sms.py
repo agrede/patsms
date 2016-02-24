@@ -1,5 +1,5 @@
 from patsms.gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, find_angle
-from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack, arctan
+from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack, arctan, abs, nan, sign, any
 from numpy.linalg import norm
 from scipy.optimize import fsolve
 from scipy.interpolate import PiecewisePolynomial, PchipInterpolator
@@ -263,10 +263,11 @@ def fit_surf_spline(r, n, sym=True):
     """
     if sym:
         kp = where(r[:, 0] >= 0)[0]
-        x = hstack((-r[kp, 0], r[kp, 0]))
+        kn = where(r[:, 0] > 0)[0]
+        x = hstack((-r[kn, 0], r[kp, 0]))
         ks = argsort(x)
         x = x[ks]
-        y = hstack((r[kp, 1], r[kp, 1]))[ks]
+        y = hstack((r[kn, 1], r[kp, 1]))[ks]
     else:
         ks = argsort(r[:, 0])
         x = r[ks, 0]
@@ -286,17 +287,35 @@ def trace_rx(fr, fx, ystack, nstack, nr, nx, xs, thetai,
         dfx = lambda x: fx.derivative(x)
     for k, x in enumerate(xs):
         rr = array([x, fr(x)])
+        dn = d_to_n(dfr(x))
+        if dn[0]*sign(di[0]) > -di[1]:
+            rtn[:, :, k] = nan
+            continue
         ds = dsr(di, d_to_n(dfr(x)), ns[:2])
         tmp, ds, dl = trace_stack(ystack, ns[1:], rr, ds, return_all=True)
-        if ds[0] == 0. or ds[1] >= 0.:
-            next
+        if ds[1] >= 0:
+            rtn[:, :, k] = nan
+            continue
         tx = (-hx-tmp[-1, 1])*ds[0]/ds[1]+tmp[-1, 0]
         if tx < -wr/2. or tx > wr/2.:
-            next
-        xx = fsolve(lambda x: ds[1]/ds[0]*(x-tmp[-1, 0]) +
-                    tmp[-1, 1]-fx(x), tx)[0]
+            rtn[:, :, k] = nan
+            continue
+        if ds[0] == 0:
+            xx = tmp[-1, 0]
+        else:
+            xx = fsolve(lambda x: ds[1]/ds[0]*(x-tmp[-1, 0]) +
+                        tmp[-1, 1]-fx(x), tx)[0]
+            if abs(ds[0]) < 0.01:
+                xx = fsolve(lambda x: ds[1]/ds[0]*(x-tmp[-1, 0]) +
+                            tmp[-1, 1]-fx(x), xx)[0]
+        if (abs(xx) > wr/2.):
+            rtn[:, :, k] = nan
+            continue
         rx = array([xx, fx(xx)])
         ds = dsx(ds, d_to_n(dfx(xx)))
-        ra = -rx[1]/ds[1]*ds+rx
+        if ds[1] == 0:
+            ra = array([rx[0], 0.])
+        else:
+            ra = -rx[1]/ds[1]*ds+rx
         rtn[:, :, k] = vstack((tmp, rx, ra))
     return rtn
