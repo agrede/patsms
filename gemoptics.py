@@ -118,3 +118,18 @@ def dasphere(r, R, kappa, alpha):
         2.*r[:, 0]/((a+1.)*R) +
         kappa*power(r[:, 0]/R, 3)/(power(a+1., 2)*a) +
         sum(powers*alpha*power(r, powers-1), axis=1))
+
+
+def ddasphere(r, R, kappa, alpha):
+    kappa = kappa+1.
+    alpha = atleast_2d(alpha)
+    r = atleast_2d(r).T
+    powers = atleast_2d(2*(1+arange(alpha.size)))
+    a = sqrt(1.-kappa*power(r[:, 0]/R, 2))
+    b = 1.+a
+    return (
+        2./(b*R) +
+        5.*kappa*power(r, 2)/(power(b, 2)*a*power(R, 3)) +
+        2.*power(kappa, 2)*power(r, 4)/(power(b, 3)*power(a, 2)*power(R, 5)) +
+        power(kappa, 2)*power(r, 4)/(power(b, 2)*power(a, 3)*power(R, 5)) +
+        sum((powers-1.)*powers*alpha*power(r, powers-2), axis=1))
