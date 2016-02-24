@@ -1,6 +1,7 @@
 from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos, arange, sum
 from numpy.linalg import norm
 from scipy.optimize import fsolve
+from numba import jit
 
 
 def uv(x):
@@ -97,7 +98,7 @@ def find_angle(ys, ns, dx):
                 arctan(dx/(ys[0]-ys[-1])))[0]
     return array([sin(th), -cos(th)])
 
-
+@jit
 def asphere(r, R, kappa, alpha):
     kappa = kappa+1.
     alpha = atleast_2d(alpha)
@@ -107,7 +108,7 @@ def asphere(r, R, kappa, alpha):
     return (power(r[:, 0], 2)/((a[:, 0]+1.)*R) +
             sum(alpha*power(r, powers), axis=1))
 
-
+@jit
 def dasphere(r, R, kappa, alpha):
     kappa = kappa+1.
     alpha = atleast_2d(alpha)
@@ -119,7 +120,7 @@ def dasphere(r, R, kappa, alpha):
         kappa*power(r[:, 0]/R, 3)/(power(a+1., 2)*a) +
         sum(powers*alpha*power(r, powers-1), axis=1))
 
-
+@jit
 def ddasphere(r, R, kappa, alpha):
     kappa = kappa+1.
     alpha = atleast_2d(alpha)

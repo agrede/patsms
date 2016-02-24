@@ -94,8 +94,7 @@ def phaseFill(iophs, sym=True):
     else:
         Ao = ((iophs[:, :, 2].max()-iophs[:, :, 2].min()) *
               (iophs[:, :, 3].max()-iophs[:, :, 3].min()))
-    rtn = np.min(np.array([1., np.abs(Ai/Ao)]))  # Catch greater than 1 error
-    return (1.-rtn)
+    return np.min(np.array([1., np.abs(Ai/Ao)]))  # Catch greater than 1 error
 
 
 def optASRXFit(A, rxs, ths, ns, NR):
@@ -105,7 +104,7 @@ def optASRXFit(A, rxs, ths, ns, NR):
 
 
 def optASRX(R0, X0, ns, betam, Nx=101, Np=101):
-    A0 = np.hstack(R0, X0)
+    A0 = np.hstack((R0, X0))
     NR = R0.size
     rxs = np.linspace(-1., 1., Nx)
     ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
