@@ -1,4 +1,4 @@
-from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos, arange
+from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos, arange, sum
 from numpy.linalg import norm
 from scipy.optimize import fsolve
 
@@ -72,7 +72,10 @@ def trace_stack(ys, ns, r, dr, return_all=False):
     dn = array([0, -sign(dr[1])])
     rs = vstack((r, vstack((zeros(ys.size), ys)).T))
     for k, y in enumerate(ys):
-        rs[k+1, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
+        if abs(dr[1]) > 0:
+            rs[k+1, 0] = (y-r[1])*dr[0]/dr[1]+r[0]
+        else:
+            rs[k+1, 0] = r[0]
         dr = dsr(dr, dn, ns[[k, k+1]])
     if return_all:
         return (rs, dr, opl(rs, array(ns[:-1])))
