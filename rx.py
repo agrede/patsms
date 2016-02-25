@@ -3,39 +3,58 @@ import numpy as np
 import numpy.ma as ma
 from scipy.optimize import newton, minimize
 import collections
+from numba import jit
 
 
+@jit
 def oas(x, A):
-    il = isinstance(x, collections.Iterable)
-    if (not il):
-        x = np.array(x)
-    rtn = A[0] + asphere(x, A[1], A[2], A[3:])
-    if (il):
-        return rtn
-    else:
-        return rtn[0]
+    kappa = A[2]+1.
+    R = A[1]
+    a = np.sqrt(1.-kappa*x*x/(R*R))
+    rtn = A[0]+x*x/((a+1.)*R)
+    for k in range(3, A.size):
+        rtn = rtn+A[k]*x**(2*(k-2))
+    return rtn
 
 
+@jit
 def odas(x, A):
-    il = isinstance(x, collections.Iterable)
-    if (not il):
-        x = np.array(x)
-    rtn = dasphere(x, A[1], A[2], A[3:])
-    if (il):
-        return rtn
-    else:
-        return rtn[0]
+    kappa = A[2]+1.
+    R = A[1]
+    a = np.sqrt(1.-kappa*x*x/(R*R))
+    rtn = 2.*x/((a+1.)*R)+kappa*(x/R)**3/(a*(a+1.)**2)
+    for k in range(3, A.size):
+        pwr = 2.*(k-2.)
+        rtn = rtn+pwr*A[k]*(x**(2*(k-2)-1))
+    return rtn
 
 
+@jit
 def oddas(x, A):
-    il = isinstance(x, collections.Iterable)
-    if (not il):
-        x = np.array(x)
-    rtn = ddasphere(x, A[1], A[2], A[3:])
-    if (il):
-        return rtn
-    else:
-        return rtn[0]
+    kappa = A[2]+1.
+    R = A[1]
+    a = np.sqrt(1.-kappa*x*x/(R*R))
+    b = 1.+a
+    rtn = (2./(b*R)+5.*kappa*x**2/(b**2*a*R**3) +
+           2.*kappa**2*x**4/(b**2*a**3*R**5))
+    if (A.size > 3):
+        rtn = rtn+2.*A[3]
+        for k in range(4, A.size):
+            pwr = 2.*(k-2.)
+            rtn = rtn+(pwr-1.)*pwr*A[k]*(x**(2*(k-2)-2))
+    return rtn
+
+
+def asi(x, A, m, x0, y0):
+    return (m*(x-x0)+y0-oas(x, A))
+
+
+def dasi(x, A, m, x0, y0):
+    return (m-odas(x, A))
+
+
+def ddasi(x, A, m, x0, y0):
+    return (-oddas(x, A))
 
 
 def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
@@ -50,6 +69,7 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
         for k1, xr in enumerate(rxs):
             yr = oas(xr, R)
             dn = d_to_n(odas(xr, R))
+
             if dn[0]*np.sign(di[0]) > -di[1]:  # Ray coming from inside
                 rtn[k1, k2, :] = np.nan
                 continue
@@ -66,16 +86,18 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
                 continue
             if np.abs(ds[0]) > 0:
                 xxlast = (np.sign(ds[0])*np.array([xxlast, tx])).max()
-                xx = newton(
-                    lambda x: ds[1]/ds[0]*(x-tx)+yxmax-oas(x, X),
-                    xxlast,
-                    fprime=lambda x: ds[1]/ds[0]-odas(x, X),
-                    fprime2=lambda x: -oddas(x, X))
+                try:
+                    xx = newton(asi, xxlast, args=(X, ds[1]/ds[0], tx, yxmax),
+                                fprime=dasi, fprime2=ddasi)
+                except RuntimeError:
+                    print(", ".join(["%0.10e" % x for x in np.array(
+                        [xxlast, ds[1]/ds[0], tx, yxmax])]))
             else:
                 xxlast = tx
                 xx = tx
             yx = oas(xx, X)
-            ds = dsx(ds, d_to_n(odas(xx, X)))
+            tmp = odas(xx, X)
+            ds = dsx(ds, d_to_n(tmp))
             if np.abs(ds[1]) > 0:
                 xo = -yx*ds[0]/ds[1]+xx
             else:
