@@ -1,7 +1,7 @@
 from patsms.gemoptics import uv, asphere, dasphere, ddasphere, d_to_n, dsr, dsx
 import numpy as np
 import numpy.ma as ma
-from scipy.optimize import newton, minimize
+from scipy.optimize import fsolve, newton, minimize
 import collections
 from numba import jit
 
@@ -59,11 +59,15 @@ def ddasi(x, A, m, x0, y0):
 
 def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
     rtn = np.zeros((rxs.size, ths.size, 4))
+    # print("R: "+", ".join(["%0.5e" % x for x in R]))
+    # print("X: "+", ".join(["%0.5e" % x for x in X]))
     yxmax = oas(ux, X)
+
     for k2, th in enumerate(ths):
         di = np.array([np.sin(th), -np.cos(th)])
         if np.abs(di[0]) > 0:
-            xxlast = (np.sign(di[0])*np.array([rxs[0], -ux])).max()
+            xxlast = np.sign(di[0])*(
+                np.sign(di[0])*np.array([rxs[0], -ux])).max()
         else:
             xxlast = rxs[0]
         for k1, xr in enumerate(rxs):
@@ -85,13 +89,14 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
                 rtn[k1, k2, :] = np.nan
                 continue
             if np.abs(ds[0]) > 0:
-                xxlast = (np.sign(ds[0])*np.array([xxlast, tx])).max()
+                xxlast = np.sign(ds[0])*(
+                    np.sign(ds[0])*np.array([xxlast, tx])).max()
                 try:
                     xx = newton(asi, xxlast, args=(X, ds[1]/ds[0], tx, yxmax),
                                 fprime=dasi, fprime2=ddasi)
                 except RuntimeError:
-                    print(", ".join(["%0.10e" % x for x in np.array(
-                        [xxlast, ds[1]/ds[0], tx, yxmax])]))
+                    xx = fsolve(asi, xxlast, args=(X, ds[1]/ds[0], tx, yxmax),
+                                fprime=dasi)[0]
             else:
                 xxlast = tx
                 xx = tx
@@ -102,6 +107,9 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
                 xo = -yx*ds[0]/ds[1]+xx
             else:
                 xo = xx
+            if np.abs(xo) > uo:
+                rtn[k1, k2, :] = np.nan
+                continue
             rtn[k1, k2, :] = np.array([xr, -ns[0]*di[0], xo, ns[1]*ds[0]])
     return ma.masked_where(np.isnan(rtn), rtn)
 
@@ -116,7 +124,10 @@ def phaseFill(iophs, sym=True):
     else:
         Ao = ((iophs[:, :, 2].max()-iophs[:, :, 2].min()) *
               (iophs[:, :, 3].max()-iophs[:, :, 3].min()))
-    return np.min(np.array([1., np.abs(Ai/Ao)]))  # Catch greater than 1 error
+    if Ao <= 0:
+        return 0.
+    else:
+        return np.min(np.array([1., np.abs(Ai/Ao)]))  # Catch greater than 1 error
 
 
 def optASRXFit(A, rxs, ths, ns, NR):
@@ -125,9 +136,15 @@ def optASRXFit(A, rxs, ths, ns, NR):
     return (1.-phaseFill(inOutPhase(rxs, ths, ns, R, X)))
 
 
-def optASRX(R0, X0, ns, betam, Nx=101, Np=101):
+def optASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
     A0 = np.hstack((R0, X0))
+    bnds = [(None, None) for x in A0]
     NR = R0.size
+    bnds[0] = (0.01, 5.)
+    bnds[NR] = (-5., -0.01)
+    bnds[1] = (-20., -0.01)
+    bnds[NR+1] = (0.01, 20)
     rxs = np.linspace(-1., 1., Nx)
     ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
-    return minimize(optASRXFit, A0, args=(rxs, ths, ns, NR))
+    return minimize(optASRXFit, A0, args=(rxs, ths, ns, NR),
+                    bounds=bnds, method=method)
