@@ -1,7 +1,7 @@
 from patsms.gemoptics import uv, asphere, dasphere, ddasphere, d_to_n, dsr, dsx
 import numpy as np
 import numpy.ma as ma
-from scipy.optimize import fsolve, newton, minimize
+from scipy.optimize import fsolve, newton, minimize, basinhopping
 import collections
 from numba import jit
 
@@ -124,27 +124,86 @@ def phaseFill(iophs, sym=True):
     else:
         Ao = ((iophs[:, :, 2].max()-iophs[:, :, 2].min()) *
               (iophs[:, :, 3].max()-iophs[:, :, 3].min()))
-    if Ao <= 0:
+    try:
+        if Ao <= 0:
+            rtn = 0.
+        else:
+            rtn = np.min(np.array([1., np.abs(Ai/Ao)]))
+    except:
+        rtn = 0.
+    return rtn
+
+
+def phaseOrient(iophs):
+    if np.all(iophs.mask):
         return 0.
-    else:
-        return np.min(np.array([1., np.abs(Ai/Ao)]))  # Catch greater than 1 error
+    ks = np.argmin(np.abs(iophs[:, :, 2] -
+                          np.atleast_2d(iophs[:, :, 2].mean(axis=0))), axis=0)
+    r0 = np.transpose(
+        np.atleast_3d(
+            ma.vstack([iophs[k2, k1, [2, 3]] for k1, k2 in enumerate(ks)])),
+        (2, 0, 1))
+    ado = np.abs(iophs[:, :, [2, 3]]-r0)
+    return (np.sum(ado[:, :, 1]) /
+            np.sum(np.sqrt(np.sum(np.power(ado, 2), axis=2))))
+
+
+def posOrient(iophs):
+    if np.all(iophs.mask):
+        return 0.
+    ks = np.argmin(np.abs(iophs[:, :, 3] -
+                          np.atleast_2d(iophs[:, :, 3].mean(axis=1))), axis=1)
+    r0 = np.transpose(
+        np.atleast_3d(
+            ma.vstack([iophs[k1, k2, [2, 3]] for k1, k2 in enumerate(ks)])),
+        (0, 2, 1))
+    ado = np.abs(iophs[:, :, [2, 3]]-r0)
+    return (np.sum(ado[:, :, 0]) /
+            np.sum(np.sqrt(np.sum(np.power(ado, 2), axis=2))))
 
 
 def optASRXFit(A, rxs, ths, ns, NR):
     R = A[:NR]
     X = A[NR:]
-    return (1.-phaseFill(inOutPhase(rxs, ths, ns, R, X)))
+    print(R)
+    print(X)
+    iop = inOutPhase(rxs, ths, ns, R, X)
+    return ((1.-phaseFill(iop))*(1.-phaseOrient(iop))*(1.-posOrient(iop)))
+    # return (3.-phaseFill(iop)-phaseOrient(iop)-posOrient(iop))
 
 
-def optASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
+def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
     A0 = np.hstack((R0, X0))
     bnds = [(None, None) for x in A0]
     NR = R0.size
     bnds[0] = (0.01, 5.)
     bnds[NR] = (-5., -0.01)
-    bnds[1] = (-20., -0.01)
-    bnds[NR+1] = (0.01, 20)
+    bnds[1] = (-200., -0.01)
+    bnds[NR+1] = (0.01, 200)
     rxs = np.linspace(-1., 1., Nx)
     ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
-    return minimize(optASRXFit, A0, args=(rxs, ths, ns, NR),
-                    bounds=bnds, method=method)
+    o = minimize(optASRXFit, A0, args=(rxs, ths, ns, NR),
+                 bounds=bnds, method=method)
+    R0 = o.x[:NR]
+    X0 = o.x[NR:]
+    return (R0, X0, o)
+
+
+def bhASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
+    A0 = np.hstack((R0, X0))
+    bnds = [(None, None) for x in A0]
+    NR = R0.size
+    bnds[0] = (0.01, 5.)
+    bnds[NR] = (-5., -0.01)
+    bnds[1] = (-200., -0.01)
+    bnds[NR+1] = (0.01, 200)
+    rxs = np.linspace(-1., 1., Nx)
+    ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
+    o = basinhopping(optASRXFit, A0,
+                     minimizer_kwargs={
+                         'args': (rxs, ths, ns, NR),
+                         'bounds': bnds,
+                         'method': method})
+    R0 = o.x[:NR]
+    X0 = o.x[NR:]
+    return (R0, X0, o)
