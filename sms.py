@@ -312,7 +312,11 @@ def trace_rx(fr, fx, ystack, nstack, nr, nx, xs, thetai,
             rtn[:, :, k] = nan
             continue
         rx = array([xx, fx(xx)])
+        print(rx)
+        print(ds)
+        print(d_to_n(dfx(xx)))
         ds = dsx(ds, d_to_n(dfx(xx)))
+        print(ds)
         if ds[1] == 0:
             ra = array([rx[0], 0.])
         else:
