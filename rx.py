@@ -61,6 +61,9 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
     rtn = np.zeros((rxs.size, ths.size, 4))
     # print("R: "+", ".join(["%0.5e" % x for x in R]))
     # print("X: "+", ".join(["%0.5e" % x for x in X]))
+    uxb = np.sqrt(X[1]**2/(1.+X[2]))
+    if ux >= uxb:
+        ux = uxb-np.finfo(type(uxb)).eps
     yxmax = oas(ux, X)
 
     for k2, th in enumerate(ths):
@@ -72,6 +75,9 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
             xxlast = rxs[0]
         for k1, xr in enumerate(rxs):
             yr = oas(xr, R)
+            if yr < 0:  # Penalize if lens drops below image plane
+                rtn[k1, k2, :] = np.nan
+                continue
             dn = d_to_n(odas(xr, R))
 
             if dn[0]*np.sign(di[0]) > -di[1]:  # Ray coming from inside
@@ -95,6 +101,7 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
                     xx = newton(asi, xxlast, args=(X, ds[1]/ds[0], tx, yxmax),
                                 fprime=dasi, fprime2=ddasi)
                 except RuntimeError:
+                    print(np.array([xxlast, ds[1]/ds[0], tx, yxmax]))
                     xx = fsolve(asi, xxlast, args=(X, ds[1]/ds[0], tx, yxmax),
                                 fprime=dasi)[0]
             else:
@@ -110,8 +117,9 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
             if np.abs(xo) > uo:
                 rtn[k1, k2, :] = np.nan
                 continue
+            xxlast = xx
             rtn[k1, k2, :] = np.array([xr, -ns[0]*di[0], xo, ns[1]*ds[0]])
-    return ma.masked_where(np.isnan(rtn), rtn)
+    return ma.masked_where(~np.isfinite(rtn), rtn)
 
 
 def phaseFill(iophs, sym=True):
@@ -131,7 +139,10 @@ def phaseFill(iophs, sym=True):
             rtn = np.min(np.array([1., np.abs(Ai/Ao)]))
     except:
         rtn = 0.
-    return rtn
+    if np.isfinite(rtn):
+        return rtn
+    else:
+        return 0.
 
 
 def phaseOrient(iophs):
@@ -146,6 +157,20 @@ def phaseOrient(iophs):
     ado = np.abs(iophs[:, :, [2, 3]]-r0)
     return (np.sum(ado[:, :, 1]) /
             np.sum(np.sqrt(np.sum(np.power(ado, 2), axis=2))))
+
+
+def inPhaseUse(iophs):
+    return ((~iophs[:, :, 0].mask).sum()/iophs[:, :, 0].size)
+
+
+def spotSize(iophs):
+    if np.all(iophs.mask):
+        return iophs[:, :, 2].size
+    rtn = iophs[:, :, 2].std(axis=0).sum()/iophs.shape[1]
+    if np.isfinite(rtn):
+        return rtn
+    else:
+        return iophs[:, :, 2].size
 
 
 def posOrient(iophs):
@@ -167,13 +192,15 @@ def optASRXFit(A, rxs, ths, ns, NR):
     # R[:3] = R[:3]*10.
     X = A[NR:]
     # X[:3] = X[:3]*10.
-    print(R)
-    print(X)
-    iop = inOutPhase(rxs, ths, ns, R, X)
+    print(",".join(["%e" % x for x in R]))
+    print(",".join(["%e" % x for x in X]))
+    iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
     # R[:3] = R[:3]/10.
     # X[:3] = X[:3]/10.
-    return ((1.-phaseFill(iop))*(1.-phaseOrient(iop)))
-    #  return ((1.-phaseFill(iop))*(1.-phaseOrient(iop))*(1.-posOrient(iop)))
+    # return (1.-phaseFill(iop))**2*spotSize(iop)
+    return (1.-phaseFill(iop)**8)*spotSize(iop)*(1.-inPhaseUse(iop))
+    # return ((1.-phaseFill(iop))*(1.-phaseOrient(iop)))
+    # return ((1.-phaseFill(iop))*(1.-phaseOrient(iop))*(1.-posOrient(iop)))
     # return (3.-phaseFill(iop)-phaseOrient(iop)-posOrient(iop))
 
 
