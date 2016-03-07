@@ -166,7 +166,8 @@ def inPhaseUse(iophs):
 def spotSize(iophs):
     if np.all(iophs.mask):
         return iophs[:, :, 2].size
-    rtn = iophs[:, :, 2].std(axis=0).sum()/iophs.shape[1]
+    rtn = (iophs[:, :, 2].std(axis=0) +
+           iophs[:, :, 2].mask.sum(axis=0)).sum()/iophs.shape[1]
     if np.isfinite(rtn):
         return rtn
     else:
