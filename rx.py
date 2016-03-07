@@ -3,6 +3,7 @@ import numpy as np
 import numpy.ma as ma
 from scipy.optimize import fsolve, newton, minimize, basinhopping
 import collections
+import matplotlib.pyplot as plt
 from numba import jit
 
 
@@ -166,8 +167,7 @@ def inPhaseUse(iophs):
 def spotSize(iophs):
     if np.all(iophs.mask):
         return iophs[:, :, 2].size
-    rtn = (iophs[:, :, 2].std(axis=0) +
-           iophs[:, :, 2].mask.sum(axis=0)).sum()/iophs.shape[1]
+    rtn = (iophs[:, :, 2].std(axis=0)).sum()/iophs.shape[1]
     if np.isfinite(rtn):
         return rtn
     else:
@@ -244,3 +244,12 @@ def bhASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
     R0 = o.x[:NR]
     X0 = o.x[NR:]
     return (R0, X0, o)
+
+
+def plotRX(xs, R, X):
+    return plt.plot(xs,
+                    np.vstack([np.array([oas(x, R), oas(x, X)]) for x in xs]))
+
+
+def plotPhase(iophs):
+    return plt.pcolormesh(iophs[:, :, 2], iophs[:, :, 3], iophs[:, :, 2])
