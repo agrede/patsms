@@ -189,28 +189,21 @@ def posOrient(iophs):
 
 
 def optASRXFit(A, rxs, ths, ns, NR):
-    R = A[:NR]
-    # R[:3] = R[:3]*10.
-    X = A[NR:]
-    # X[:3] = X[:3]*10.
+    A0 = A.copy()
+    R = A0[:NR]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    X = A0[NR:]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
     print(",".join(["%e" % x for x in R]))
     print(",".join(["%e" % x for x in X]))
     iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
-    # R[:3] = R[:3]/10.
-    # X[:3] = X[:3]/10.
-    # return (1.-phaseFill(iop))**2*spotSize(iop)
     return (1.-phaseFill(iop)**8)*spotSize(iop)*(1.-inPhaseUse(iop))
-    # return ((1.-phaseFill(iop))*(1.-phaseOrient(iop)))
-    # return ((1.-phaseFill(iop))*(1.-phaseOrient(iop))*(1.-posOrient(iop)))
-    # return (3.-phaseFill(iop)-phaseOrient(iop)-posOrient(iop))
 
 
 def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
-    # R0[:3] = R0[:3]/10.
-    # X0[:3] = X0[:3]/10.
+    NR = R0.size
+    R0 = R0*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    X0 = X0*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
     A0 = np.hstack((R0, X0))
     bnds = [(None, None) for x in A0]
-    NR = R0.size
     bnds[0] = (0.01, 5.)
     bnds[NR] = (-5., -0.01)
     bnds[1] = (-20., -0.01)
@@ -219,10 +212,8 @@ def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
     ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
     o = minimize(optASRXFit, A0, args=(rxs, ths, ns, NR),
                  bounds=bnds, method=method)
-    R0 = o.x[:NR]
-    # R0[:3] = R0[:3]*10.
-    X0 = o.x[NR:]
-    # X0[:3] = X0[:3]*10.
+    R0 = o.x[:NR]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    X0 = o.x[NR:]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
     return (R0, X0, o)
 
 
