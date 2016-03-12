@@ -62,9 +62,10 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
     rtn = np.zeros((rxs.size, ths.size, 4))
     # print("R: "+", ".join(["%0.5e" % x for x in R]))
     # print("X: "+", ".join(["%0.5e" % x for x in X]))
-    uxb = np.sqrt(X[1]**2/(1.+X[2]))
-    if ux >= uxb:
-        ux = uxb-np.finfo(type(uxb)).eps
+    if X[2]+1. > 0:
+        uxb = np.sqrt(X[1]**2/(1.+X[2]))
+        if ux >= uxb:
+            ux = uxb-np.finfo(type(uxb)).eps
     yxmax = oas(ux, X)
 
     for k2, th in enumerate(ths):
@@ -174,6 +175,18 @@ def spotSize(iophs):
         return iophs[:, :, 2].size
 
 
+def spotSizeWeighted(iophs, ths):
+    if np.all(iophs.mask):
+        return (iophs[:, :, 2].size*np.cosh(2.*ths/ths.max()))
+    rtn = (iophs[:, :, 2].std(axis=0) *
+           np.cosh(2.*ths/ths.max()) /
+           ((~iophs[:, :, 2].mask).sum(axis=0)+1.)).sum()
+    if np.isfinite(rtn):
+        return rtn
+    else:
+        return (iophs[:, :, 2].size*np.cosh(2.*ths/ths.max()))
+
+
 def posOrient(iophs):
     if np.all(iophs.mask):
         return 0.
@@ -188,24 +201,33 @@ def posOrient(iophs):
             np.sum(np.sqrt(np.sum(np.power(ado, 2), axis=2))))
 
 
+def optScale(A0, NR):
+    A = A0.copy()
+    A[:NR] = A0[:NR]*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    A[NR:] = A0[NR:]*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    return A
+
+
+def optUnScale(A0, NR):
+    A = A0.copy()
+    A[:NR] = A0[:NR]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    A[NR:] = A0[NR:]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    return A
+
+
 def optASRXFit(A, rxs, ths, ns, NR):
-    A0 = A.copy()
-    R = A0[:NR]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
-    X = A0[NR:]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    A0 = optUnScale(A, NR)
+    R = A0[:NR]
+    X = A0[NR:]
     print(",".join(["%e" % x for x in R]))
     print(",".join(["%e" % x for x in X]))
     iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
-    return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
-    # return spotSize(iop)*(1.-inPhaseUse(iop))
-    # return spotSize(iop)
-    # return (1.-phaseFill(iop))
+    return (1.-phaseFill(iop))*spotSizeWeighted(iop, ths)*(1.-inPhaseUse(iop))
 
 
 def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
     NR = R0.size
-    R0 = R0*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
-    X0 = X0*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
-    A0 = np.hstack((R0, X0))
+    A0 = optScale(np.hstack((R0, X0)), NR)
     bnds = [(None, None) for x in A0]
     bnds[0] = (0.01, 5.)
     bnds[NR] = (-5., -0.01)
@@ -215,8 +237,9 @@ def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
     ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
     o = minimize(optASRXFit, A0, args=(rxs, ths, ns, NR),
                  bounds=bnds, method=method)
-    R0 = o.x[:NR]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
-    X0 = o.x[NR:]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
+    A = optUnScale(o.x, NR)
+    R0 = A[:NR]
+    X0 = A[NR:]
     return (R0, X0, o)
 
 
