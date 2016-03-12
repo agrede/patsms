@@ -195,7 +195,10 @@ def optASRXFit(A, rxs, ths, ns, NR):
     print(",".join(["%e" % x for x in R]))
     print(",".join(["%e" % x for x in X]))
     iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
-    return (1.-phaseFill(iop)**8)*spotSize(iop)*(1.-inPhaseUse(iop))
+    return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
+    # return spotSize(iop)*(1.-inPhaseUse(iop))
+    # return spotSize(iop)
+    # return (1.-phaseFill(iop))
 
 
 def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
@@ -243,4 +246,4 @@ def plotRX(xs, R, X):
 
 
 def plotPhase(iophs):
-    return plt.pcolormesh(iophs[:, :, 2], iophs[:, :, 3], iophs[:, :, 2])
+    return plt.pcolormesh(iophs[:, :, 2], iophs[:, :, 3], iophs[:, :, 1])
