@@ -1,0 +1,208 @@
+% Plot quick method using pgfplots to plot phase
+%
+% Copyright (C) 2014-2016 Alex J. Grede
+% GPL v3, See LICENSE.txt for details
+% This function is part of patsms adapted from specPlot
+
+\documentclass[tikz]{standalone}
+\usepackage{stix}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\usepackage{xfrac}
+\usepackage{bm}
+\usepackage[use-xspace=true,
+redefine-symbols=false,
+range-units=single,
+inter-unit-product=\ensuremath{{}\cdot{}}]{siunitx}
+\sisetup{detect-all}
+\edef\dtaptha{\jobname_Lines.csv}
+\edef\dtapthb{\jobname_Bound.csv}
+\DeclareSIUnit\decade{decade}
+\DeclareSIUnit\arb{a.u.}
+
+\pgfplotsset{
+  compat=1.13,
+  width=8.8cm,
+  label style={font=\large},
+  tick label style={font=\normalsize},
+  every axis/.append style={
+    very thick,
+    line cap=rect,
+    tick style={very thick,line cap=rect,black}
+  },
+  every axis plot/.append style={thick}
+}
+
+% Generated using
+% http://tools.medialab.sciences-po.fr/iwanthue/index.php
+% 10 colors, soft (k-Means), H: 0 -- 278, C: 0.52 -- 3, L: 0 -- 1.5
+\definecolor{color0}{HTML}{377EB8}
+\definecolor{color1}{HTML}{E41A1C}
+\definecolor{color2}{HTML}{4DAF4A}
+\definecolor{color3}{HTML}{FF7F00}
+\definecolor{color4}{HTML}{984EA3}
+\definecolor{color5}{HTML}{A65628}
+% \definecolor{color6}{HTML}{D0B648}
+% \definecolor{color7}{HTML}{97A1D0}
+% \definecolor{color8}{HTML}{454324}
+% \definecolor{color9}{HTML}{7ED98F}
+
+\pgfplotscreateplotcyclelist{mycolor}{%
+  color0,color1,color2,color3,color4,color5}
+
+\begin{document}
+\begin{tikzpicture}
+  \begin{axis}[
+    scale only axis,
+    colormap/bluered,
+    point meta min=((( limits['zmin'] ))),
+    point meta max=((( limits['zmax'] ))),
+    colorbar horizontal,
+    colorbar style={
+      xlabel={\textbf{%
+        ((( labels['zlabel']['text'] ))) %
+        ((* if labels['zlabel']['symbol'] is defined *))%
+        \(\bm{\left( ((( labels['zlabel']['symbol'] ))) \right)}\) %
+        ((* endif *))%
+        ((* if labels['zlabel']['units'] is defined *))%
+        \(\bm{\left[%
+            ((* if labels['zlabel']['mult'] is defined *))%
+            \times
+            \protect{\SI{((( labels['zlabel']['mult'] )))}{(((
+                labels['zlabel']['units'] )))}} %
+            ((* else *))%
+            \protect{\si{((( labels['zlabel']['units'] )))}}%
+            ((* endif *))%
+          \right]}\)%
+        ((* endif *))%
+      }},
+      label style={font=\footnotesize},
+      tick label style={font=\footnotesize},
+      at={(0.95455,0.96)},anchor=north east,
+      width=0.45*\pgfkeysvalueof{/pgfplots/parent axis width},
+      height=0.04*\pgfkeysvalueof{/pgfplots/parent axis height},
+    },
+    xmin=((( limits['xmin'] ))),xmax=((( limits['xmax'] ))),
+    ((* if (ticks['xmajor']) is iterable and ticks['xmajor'] is not string *))
+    xtick = {((( ticks['xmajor']|join(', ') )))},
+    ((* else *))
+    xtick = {((( ticks['xmajor'] )))},
+    ((* endif *))
+    ((* if (ticks['xlabels']) is iterable and ticks['xlabels'] is not string *))
+    xticklabels = {((( ticks['xlabels']|join(', ') )))},%
+    % x tick label style={
+    %   /pgf/number format/.cd,
+    %   fixed,
+    %   fixed zerofill,
+    %   precision=1,
+    %   /tikz/.cd
+    % },%
+    ((* else *))
+    x tick label style={
+      /pgf/number format/.cd,
+      fixed,
+      fixed zerofill,
+      precision=((( ticks['xlabels'] | int ))),
+      /tikz/.cd
+    },%
+    ((* endif *))
+    ((* if ticks['xminor'] is defined *))%
+    ((* if (ticks['xminor']) is iterable and ticks['xminor'] is not string *))
+    minor xtick = {((( ticks['xminor']|join(', ') )))},
+    ((* else *))
+    minor xtick = {((( ticks['xminor'] )))},
+    ((* endif *))
+    ((* endif *))%
+    xlabel={\textbf{%
+        ((( labels['xlabel']['text'] ))) %
+        ((* if labels['xlabel']['symbol'] is defined *))%
+        \(\bm{\left( ((( labels['xlabel']['symbol'] ))) \right)}\) %
+        ((* endif *))%
+        ((* if labels['xlabel']['units'] is defined *))%
+        \(\bm{\left[%
+            ((* if labels['xlabel']['mult'] is defined *))%
+            \times
+            \protect{\SI{((( labels['xlabel']['mult'] )))}{(((
+                labels['xlabel']['units'] )))}} %
+            ((* else *))%
+            \protect{\si{((( labels['xlabel']['units'] )))}}%
+            ((* endif *))%
+          \right]}\)%
+        ((* endif *))%
+      }},
+    ymin=((( limits['ymin'] ))),ymax=((( limits['ymax'] ))),
+    ((* if (ticks['ymajor']) is iterable and ticks['ymajor'] is not string *))
+    ytick = {((( ticks['ymajor']|join(', ') )))},
+    ((* else *))
+    ytick = {((( ticks['ymajor'] )))},
+    ((* endif *))
+    ((* if ticks['ylabels'] is iterable and ticks['ylabels'] is not string *))
+    yticklabels = {((( ticks['ylabels']|join(', ') )))},%
+    % y tick label style={
+    %   /pgf/number format/.cd,
+    %   fixed,
+    %   fixed zerofill,
+    %   precision=1,
+    %   /tikz/.cd
+    % },%
+    ((* else *))
+    y tick label style={
+      /pgf/number format/.cd,
+      fixed,
+      fixed zerofill,
+      precision=((( ticks['ylabels'] | int ))),
+      /tikz/.cd
+    },%
+    ((* endif *))
+    ((* if ticks['yminor'] is defined *))%
+    ((* if (ticks['yminor']) is iterable and ticks['yminor'] is not string*))
+    minor ytick = {((( ticks['yminor']|join(', ') )))},
+    ((* else *))
+    minor ytick = {((( ticks['yminor'] )))},
+    ((* endif *))
+    ((* endif *))%
+    ylabel={\textbf{%
+        ((( labels['ylabel']['text'] ))) %
+        ((* if labels['ylabel']['symbol'] is defined *))%
+        \(\bm{\left( ((( labels['ylabel']['symbol'] ))) \right)}\) %
+        ((* endif *))%
+        ((* if labels['ylabel']['units'] is defined *))%
+        \(\bm{\left[%
+            ((* if labels['ylabel']['mult'] is defined *))%
+            \times
+            \protect{\SI{((( labels['ylabel']['mult'] )))}{(((
+                labels['ylabel']['units'] )))}} %
+            ((* else *))%
+            \protect{\si{((( labels['ylabel']['units'] )))}}%
+            ((* endif *))%
+          \right]}\)%
+        ((* endif *))%
+      }},
+    legend style = {%
+      % at={(axis cs:)},
+      % anchor=,
+      font={\footnotesize},
+      cells={anchor=west},
+      draw=none},
+    legend pos = north east
+    ]
+
+    ((* for z in zs *))
+
+    \addplot+[no markers, solid, smooth, mesh, point meta=((( z )))]
+    table [x index=((( loop.index - 1 ))),y index=((( -1 + loop.index + loop.length ))),col sep=comma, header=false]{\dtaptha};
+
+    ((* endfor *))
+
+    \addplot+[no markers, solid, smooth, black]
+    table [x index=0,y index=1, col sep=comma, header=false]{\dtapthb};
+    \addplot+[no markers, solid, smooth, black]
+    table [x index=0,y index=2, col sep=comma, header=false]{\dtapthb};
+  \end{axis}
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
