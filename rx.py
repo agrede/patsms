@@ -179,12 +179,23 @@ def spotSizeWeighted(iophs, ths):
     if np.all(iophs.mask):
         return (iophs[:, :, 2].size*np.cosh(2.*ths/ths.max()))
     rtn = (iophs[:, :, 2].std(axis=0) *
-           np.cosh(2.*ths/ths.max()) /
+           (np.cosh(2.*ths/ths.max())) /
            ((~iophs[:, :, 2].mask).sum(axis=0)+1.)).sum()
     if np.isfinite(rtn):
         return rtn
     else:
         return (iophs[:, :, 2].size*np.cosh(2.*ths/ths.max()))
+
+
+def spotSizeUniform(iophs):
+    if np.all(iophs.mask):
+        return iophs[:, :, 2].size
+    tmp = (iophs[:, :, 2].std(axis=0))/((~iophs[:, :, 2].mask).sum(axis=0)+1.)
+    rtn = tmp.max()*tmp.std()*100.
+    if np.isfinite(rtn):
+        return rtn
+    else:
+        return iophs[:, :, 2].size
 
 
 def posOrient(iophs):
@@ -215,19 +226,28 @@ def optUnScale(A0, NR):
     return A
 
 
-def optASRXFit(A, rxs, ths, ns, NR):
-    A0 = optUnScale(A, NR)
+def optASRXFit(A, rxs, ths, ns, NR, scale):
+    if scale:
+        A0 = optUnScale(A, NR)
+    else:
+        A0 = A.copy()
     R = A0[:NR]
     X = A0[NR:]
     print(",".join(["%e" % x for x in R]))
     print(",".join(["%e" % x for x in X]))
     iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
-    return (1.-phaseFill(iop))*spotSizeWeighted(iop, ths)*(1.-inPhaseUse(iop))
+    # return (1.-phaseFill(iop))*spotSizeUniform(iop)*(1.-inPhaseUse(iop))
+    # return (1.-phaseFill(iop))*spotSizeWeighted(iop, ths)*(1.-inPhaseUse(iop))
+    return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
+    # return spotSizeWeighted(iop, ths)
 
 
-def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
+def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B', scale=True):
     NR = R0.size
-    A0 = optScale(np.hstack((R0, X0)), NR)
+    if scale:
+        A0 = optScale(np.hstack((R0, X0)), NR)
+    else:
+        A0 = np.hstack((R0, X0)).copy()
     bnds = [(None, None) for x in A0]
     bnds[0] = (0.01, 5.)
     bnds[NR] = (-5., -0.01)
@@ -235,9 +255,12 @@ def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B'):
     bnds[NR+1] = (0.01, 20.)
     rxs = np.linspace(-1., 1., Nx)
     ths = np.arcsin(np.linspace(0., np.sin(betam), Np))
-    o = minimize(optASRXFit, A0, args=(rxs, ths, ns, NR),
+    o = minimize(optASRXFit, A0, args=(rxs, ths, ns, NR, scale),
                  bounds=bnds, method=method)
-    A = optUnScale(o.x, NR)
+    if scale:
+        A = optUnScale(o.x, NR)
+    else:
+        A = o.x.copy()
     R0 = A[:NR]
     X0 = A[NR:]
     return (R0, X0, o)
@@ -263,10 +286,16 @@ def bhASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
     return (R0, X0, o)
 
 
-def plotRX(xs, R, X):
-    return plt.plot(xs,
-                    np.vstack([np.array([oas(x, R), oas(x, X)]) for x in xs]))
+def plotRX(xs, R, X, opt='k'):
+    return plt.plot(
+        xs,
+        np.vstack([np.array([oas(x, R), oas(x, X)]) for x in xs]),
+        opt)
 
 
 def plotPhase(iophs):
     return plt.pcolormesh(iophs[:, :, 2], iophs[:, :, 3], iophs[:, :, 1])
+
+
+def plotPhaseUse(iophs):
+    return plt.pcolormesh(iophs[:, :, 0], iophs[:, :, 1], iophs[:, :, 1].mask)
