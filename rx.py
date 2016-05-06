@@ -198,6 +198,27 @@ def spotSizeUniform(iophs):
         return iophs[:, :, 2].size
 
 
+def spotSize90(iophs):
+    if np.all(iophs.mask):
+        return iophs[:, :, 2].size
+    rtn = 0.
+    for k in range(iophs.shape[1]):
+        xs = ma.compressed(iophs[:, k, 2]).copy()
+        n = int((iophs.shape[0]-1)*(0.1-1.+xs.size/iophs.shape[0]))
+        if xs.size <= 1:
+            rtn = rtn + iophs.shape[0]
+        elif xs.size < 2*n or n < 1:
+            rtn = rtn + (xs.max()-xs.min())
+        else:
+            xs.sort()
+            rtn = rtn + (xs[-n:]-xs[:n]).min()
+
+    if np.isfinite(rtn):
+        return rtn
+    else:
+        return iophs[:, :, 2].size
+
+
 def posOrient(iophs):
     if np.all(iophs.mask):
         return 0.
@@ -238,7 +259,8 @@ def optASRXFit(A, rxs, ths, ns, NR, scale):
     iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
     # return (1.-phaseFill(iop))*spotSizeUniform(iop)*(1.-inPhaseUse(iop))
     # return (1.-phaseFill(iop))*spotSizeWeighted(iop, ths)*(1.-inPhaseUse(iop))
-    return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
+    # return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
+    return (1.-phaseFill(iop))*spotSize90(iop)*(1.-inPhaseUse(iop))
     # return spotSizeWeighted(iop, ths)
 
 
