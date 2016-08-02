@@ -110,6 +110,7 @@ def asphere(r, R, kappa, alpha):
 
 
 def dasphere(r, R, kappa, alpha):
+    """First derivative"""
     kappa = kappa+1.
     alpha = atleast_2d(alpha)
     r = atleast_2d(r).T
@@ -122,6 +123,7 @@ def dasphere(r, R, kappa, alpha):
 
 
 def ddasphere(r, R, kappa, alpha):
+    """Second derivative"""
     kappa = kappa+1.
     alpha = atleast_2d(alpha)
     r = atleast_2d(r).T

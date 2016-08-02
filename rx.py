@@ -9,6 +9,7 @@ from numba import jit
 
 @jit
 def oas(x, A):
+    """Asphere for optimizations"""
     kappa = A[2]+1.
     R = A[1]
     a = np.sqrt(1.-kappa*x*x/(R*R))
@@ -20,6 +21,7 @@ def oas(x, A):
 
 @jit
 def odas(x, A):
+    """First derivative asphere for optimizations"""
     kappa = A[2]+1.
     R = A[1]
     a = np.sqrt(1.-kappa*x*x/(R*R))
@@ -32,6 +34,7 @@ def odas(x, A):
 
 @jit
 def oddas(x, A):
+    """Second derivative asphere for optimizations"""
     kappa = A[2]+1.
     R = A[1]
     a = np.sqrt(1.-kappa*x*x/(R*R))
@@ -47,21 +50,31 @@ def oddas(x, A):
 
 
 def asi(x, A, m, x0, y0):
+    """Asphere for solutions"""
     return (m*(x-x0)+y0-oas(x, A))
 
 
 def dasi(x, A, m, x0, y0):
+    """First derivative for solutions"""
     return (m-odas(x, A))
 
 
 def ddasi(x, A, m, x0, y0):
+    """Second derivative for solutions"""
     return (-oddas(x, A))
 
 
 def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
+    """Ray tracing with phase space output
+    rxs -- array of positions
+    ths -- array of angles
+    ns -- array of refractive indices
+    R -- Refractive element parameters
+    X -- Reflexive element parameters
+    uo -- half-width of max output angle
+    ux -- half-width of max mirror width
+    """
     rtn = np.zeros((rxs.size, ths.size, 4))
-    # print("R: "+", ".join(["%0.5e" % x for x in R]))
-    # print("X: "+", ".join(["%0.5e" % x for x in X]))
     if X[2]+1. > 0:
         uxb = np.sqrt(X[1]**2/(1.+X[2]))
         if ux >= uxb:
@@ -125,6 +138,10 @@ def inOutPhase(rxs, ths, ns, R, X, uo=1., ux=1.):
 
 
 def phaseFill(iophs, sym=True):
+    """Phase Filling factor metric
+    iophs -- result from inOutPhase
+    sym -- If only half of the angles were used
+    """
     if np.all(iophs.mask):
         return 0.
     Ai = np.sum(np.diff(iophs[:, :-1, 0], axis=0) *
@@ -162,10 +179,12 @@ def phaseOrient(iophs):
 
 
 def inPhaseUse(iophs):
+    """Number of fraction of rays that were dropped"""
     return ((~iophs[:, :, 0].mask).sum()/iophs[:, :, 0].size)
 
 
 def spotSize(iophs):
+    """1 sigma method for spot size"""
     if np.all(iophs.mask):
         return iophs[:, :, 2].size
     rtn = (iophs[:, :, 2].std(axis=0)).sum()/iophs.shape[1]
@@ -176,6 +195,7 @@ def spotSize(iophs):
 
 
 def spotSizeWeighted(iophs, ths):
+    """Angle weighted method for spot size"""
     if np.all(iophs.mask):
         return (iophs[:, :, 2].size*np.cosh(2.*ths/ths.max()))
     rtn = (iophs[:, :, 2].std(axis=0) *
@@ -188,6 +208,7 @@ def spotSizeWeighted(iophs, ths):
 
 
 def spotSizeUniform(iophs):
+    """Method for uniformity of spot size"""
     if np.all(iophs.mask):
         return iophs[:, :, 2].size
     tmp = (iophs[:, :, 2].std(axis=0))/((~iophs[:, :, 2].mask).sum(axis=0)+1.)
@@ -199,6 +220,7 @@ def spotSizeUniform(iophs):
 
 
 def spotSize90(iophs):
+    """90% of rays spot size"""
     if np.all(iophs.mask):
         return iophs[:, :, 2].size
     rtn = 0.
@@ -234,6 +256,7 @@ def posOrient(iophs):
 
 
 def optScale(A0, NR):
+    """Scaling method for parameters"""
     A = A0.copy()
     A[:NR] = A0[:NR]*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
     A[NR:] = A0[NR:]*np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
@@ -241,6 +264,7 @@ def optScale(A0, NR):
 
 
 def optUnScale(A0, NR):
+    """Remove parameter scale"""
     A = A0.copy()
     A[:NR] = A0[:NR]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
     A[NR:] = A0[NR:]/np.hstack((0.1*np.ones(3), np.arange(1, NR-2)*2.))
@@ -248,6 +272,14 @@ def optUnScale(A0, NR):
 
 
 def optASRXFit(A, rxs, ths, ns, NR, scale):
+    """Objective function
+    A -- All RX optic parameters
+    rxs -- positions for simulation
+    ths -- angles for simulation
+    ns -- refractive indices
+    NR -- Number of parameters for optic
+    scale -- Boolean for parameter scaling
+    """
     if scale:
         A0 = optUnScale(A, NR)
     else:
@@ -265,6 +297,16 @@ def optASRXFit(A, rxs, ths, ns, NR, scale):
 
 
 def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B', scale=True):
+    """Call optimization
+    R0 -- Initial lens parameters (Thickness, radius, conic, aspheres)
+    X0 -- Initial mirror parameters
+    ns -- refractive indicies ([Source index, optic index])
+    Nx -- Number of positions to launch rays
+    Np -- Number of angles (phases) to launch rays
+    method -- Optimization algorithm
+    scale -- Scale parameters (Removes the multiple effect from the power
+             in a derivative)
+    """
     NR = R0.size
     if scale:
         A0 = optScale(np.hstack((R0, X0)), NR)
@@ -289,6 +331,7 @@ def optASRX(R0, X0, ns, betam, Nx=51, Np=51, method='L-BFGS-B', scale=True):
 
 
 def bhASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
+    """Basin hopping"""
     A0 = np.hstack((R0, X0))
     bnds = [(None, None) for x in A0]
     NR = R0.size
@@ -309,6 +352,7 @@ def bhASRX(R0, X0, ns, betam, Nx=101, Np=101, method='L-BFGS-B'):
 
 
 def plotRX(xs, R, X, opt='k'):
+    """Plots the lens"""
     return plt.plot(
         xs,
         np.vstack([np.array([oas(x, R), oas(x, X)]) for x in xs]),
@@ -316,8 +360,10 @@ def plotRX(xs, R, X, opt='k'):
 
 
 def plotPhase(iophs):
+    """Plots the output phase"""
     return plt.pcolormesh(iophs[:, :, 2], iophs[:, :, 3], iophs[:, :, 1])
 
 
 def plotPhaseUse(iophs):
+    """Plots the input phase"""
     return plt.pcolormesh(iophs[:, :, 0], iophs[:, :, 1], iophs[:, :, 1].mask)
