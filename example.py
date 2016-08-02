@@ -1,0 +1,16 @@
+import numpy as np
+import patsms.rx as rx
+from pprint import pprint
+
+
+betam = np.deg2rad(70.) # max angle of incidence
+ns16 = np.array([1., 1.6]) # refractive indicies
+
+# Initial lens to test
+R16i = np.array([7.067059017934157472e-01, -1.555506753221147953e+00, -1.317799732164616211e+00, -1.558392256025765976e-02, -2.760744002302813194e-03, 4.110580105747931208e-03, 1.198497621509209306e-02])
+X16i = np.array([-6.382909219687451507e-01, 2.556182536438865505e+00, -7.489719849224136805e-01, 7.881474423642813310e-02, 1.016134275286252608e-02, 3.662339724073535637e-03, -4.409757134422149019e-03])
+
+# Optimize
+(R16, X16, o16) = rx.optASRX(R16i, X16i, ns16, betam, method='Nelder-Mead')
+
+pprint(o16)
