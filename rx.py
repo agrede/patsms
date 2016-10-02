@@ -291,8 +291,9 @@ def optASRXFit(A, rxs, ths, ns, NR, scale):
     iop = inOutPhase(rxs, ths, ns, R, X, uo=2.)
     # return (1.-phaseFill(iop))*spotSizeUniform(iop)*(1.-inPhaseUse(iop))
     # return (1.-phaseFill(iop))*spotSizeWeighted(iop, ths)*(1.-inPhaseUse(iop))
-    # return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
-    return (1.-phaseFill(iop))*spotSize90(iop)*(1.-inPhaseUse(iop))
+    return (1.-phaseFill(iop))*spotSize(iop)*(1.-inPhaseUse(iop))
+    # return (1.-phaseFill(iop))*spotSize90(iop)*(1.-inPhaseUse(iop))
+    # return (1.-phaseFill(iop))*phaseOrient(iop)
     # return spotSizeWeighted(iop, ths)
 
 

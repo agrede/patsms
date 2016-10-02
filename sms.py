@@ -2,7 +2,8 @@ from patsms.gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, f
 from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack, arctan, abs, nan, sign, any
 from numpy.linalg import norm
 from scipy.optimize import fsolve
-from scipy.interpolate import PiecewisePolynomial, PchipInterpolator
+import scipy.interpolate as interpolate
+from scipy.interpolate import PchipInterpolator
 
 
 def wa(wr, wx, hx, ni, no, thetai):
@@ -252,7 +253,7 @@ def fit_surf(r, n, sym=True):
         ks = argsort(r[:, 0])
         x = r[ks, 0]
         y = vstack((r[ks, 1], -n[ks, 0]/n[ks, 1])).T
-    return PiecewisePolynomial(x, y)
+    return interpolate.BPoly.from_derivatives(x, y)
 
 
 def fit_surf_spline(r, n, sym=True):
