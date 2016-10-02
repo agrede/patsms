@@ -13,6 +13,7 @@ Dependencies
 
 Files
 -----
+* `example.py` generates the 2D RX concentrator used in Grede, Price, and Giebink (2016)
 * `rx.py` Ray tracing and optimization of RX concentrator
   + `optASRX`: optimization method
   + `optASRXFit`: Objective function
