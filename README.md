@@ -25,3 +25,7 @@ Files
 * `zemaxRX.py` Older ZDDE interface to zemax
 * `plots.py` Plotting functions for phase space
 * `sms.py` SMS method for RX concentrator
+
+Acknowledgements
+----------------
+This work was funded in part by the National Science Foundation under Grant No. CBET-1508968 and the Advanced Research Projects Agency-Energy (ARPA-E), U.S. Department of Energy, under Award No. DE-AR0000626. The views and opinions of authors expressed herein do not necessarily state or reflect those of the United States Government or any agency thereof.
