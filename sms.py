@@ -1,3 +1,6 @@
+# Copyright (C) 2016 Alex J. Grede
+# GPL v3, See LICENSE.txt for details
+# This function is part of PATSMS (https://github.com/agrede/patsms)
 from patsms.gemoptics import uv, dsr, dsx, dnr, dnx, opl, trace_stack, d_to_n, find_angle
 from numpy import sin, cos, pi, sqrt, array, vstack, hstack, ones, zeros, fliplr, inner, where, argsort, dstack, arctan, abs, nan, sign, any
 from numpy.linalg import norm

@@ -1,3 +1,6 @@
+# Copyright (C) 2016 Alex J. Grede
+# GPL v3, See LICENSE.txt for details
+# This function is part of PATSMS (https://github.com/agrede/patsms)
 from specPlot.plotspec import data_ranges, mkplot_axis
 import numpy as np
 import numpy.ma as ma

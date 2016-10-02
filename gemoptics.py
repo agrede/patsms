@@ -1,3 +1,6 @@
+# Copyright (C) 2016 Alex J. Grede
+# GPL v3, See LICENSE.txt for details
+# This function is part of PATSMS (https://github.com/agrede/patsms)
 from numpy import sqrt, power, eye, vstack, atleast_2d, diff, array, sign, zeros, inner, dot, arctan, sin, cos, arange, sum
 from numpy.linalg import norm
 from scipy.optimize import fsolve
