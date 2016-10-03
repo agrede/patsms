@@ -1,6 +1,8 @@
 Planar angular tracking simaltanious multiple surface design
 ============================================================
 
+[![DOI](https://zenodo.org/badge/69797744.svg)](https://zenodo.org/badge/latestdoi/69797744)
+
 For SMS design and RX design based on phase filling and aspheres
 
 Dependencies
